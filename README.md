@@ -1,6 +1,8 @@
 Particle-DotStar
 ================
 
+(Fast Modification to test SPI DMA on the Particle Photon)
+
 A library for manipulating DotStar RGB LEDs for the Spark Core, Particle Photon, P1 and Electron.
 Implementation based on Adafruit's DotStar Library.
 
