@@ -66,7 +66,8 @@ class Adafruit_DotStar {
  private:
 
   uint16_t
-    numLEDs;                                // Number of pixels
+    numLEDs,                                // Number of pixels
+    pixelArrayLength;                       // Length of the array (includes start/end frame)
   uint8_t
     dataPin,                                // If soft SPI, data pin #
     clockPin,                               // If soft SPI, clock pin #
@@ -80,7 +81,12 @@ class Adafruit_DotStar {
     hw_spi_end(void),                       // Stop hardware SPI
     sw_spi_init(void),                      // Start bitbang SPI
     sw_spi_out(uint8_t n),                  // Bitbang SPI write
-    sw_spi_end(void);                       // Stop bitbang SPI
+    sw_spi_end(void),                       // Stop bitbang SPI
+
+    hw_spi_DMA_TransferComplete_Callback(void); // DMA transfer done
+
+  bool
+    hw_spi_DMA_TransferCompleted;
 
 };
 

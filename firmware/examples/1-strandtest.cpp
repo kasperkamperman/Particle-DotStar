@@ -40,16 +40,16 @@
 //-------------------------------------------------------------------
 // Here's how to control the LEDs from any two pins (Software SPI):
 //-------------------------------------------------------------------
-#define DATAPIN   D4
-#define CLOCKPIN  D5
-Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS, DATAPIN, CLOCKPIN);
+//#define DATAPIN   D4
+//#define CLOCKPIN  D5
+//Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS, DATAPIN, CLOCKPIN);
 
 //-------------------------------------------------------------------
 // Here's how to control the LEDs from SPI pins (Hardware SPI):
 //-------------------------------------------------------------------
 // Hardware SPI is a little faster, but must be wired to specific pins
 // (Core/Photon/P1/Electron = pin A5 for data, A3 for clock)
-//Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS);
+Adafruit_DotStar strip = Adafruit_DotStar(NUMPIXELS, DOTSTAR_BGR);
 
 void setup() {
   strip.begin(); // Initialize pins for output
