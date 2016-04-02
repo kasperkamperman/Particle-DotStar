@@ -81,11 +81,11 @@ class Adafruit_DotStar {
     hw_spi_end(void),                       // Stop hardware SPI
     sw_spi_init(void),                      // Start bitbang SPI
     sw_spi_out(uint8_t n),                  // Bitbang SPI write
-    sw_spi_end(void),                       // Stop bitbang SPI
+    sw_spi_end(void);                       // Stop bitbang SPI
 
-    hw_spi_DMA_TransferComplete_Callback(void); // DMA transfer done
+  static void hw_spi_DMA_TransferComplete_Callback(void); // DMA transfer done
 
-  bool
+  static bool
     hw_spi_DMA_TransferCompleted;
 
 };

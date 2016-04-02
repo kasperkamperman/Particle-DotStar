@@ -54,6 +54,8 @@
 
 #define USE_HW_SPI 255 // Assign this to dataPin to indicate 'hard' SPI
 
+bool Adafruit_DotStar::hw_spi_DMA_TransferCompleted;
+
 // Constructor for hardware SPI -- must connect to MOSI, SCK pins
 Adafruit_DotStar::Adafruit_DotStar(uint16_t n, uint8_t o) :
  numLEDs(n), dataPin(USE_HW_SPI), brightness(0), pixels(NULL),
@@ -225,15 +227,13 @@ void Adafruit_DotStar::show(void) {
     // transferComplete_Callback method from this topic:
     // https://community.particle.io/t/bug-in-spi-block-transfer-complete-callback/18568
 
-
     hw_spi_DMA_TransferCompleted = false;
-    // line below gives error: invalid use of non-static member function
-    //SPI.transfer((void *)pixels, 0, pixelArrayLength, hw_spi_DMA_TransferComplete_Callback);
-    SPI.transfer((void *)pixels, 0, pixelArrayLength, NULL);
+    SPI.transfer((void *)pixels, 0, pixelArrayLength, hw_spi_DMA_TransferComplete_Callback);
+    //SPI.transfer((void *)pixels, 0, pixelArrayLength, NULL);
 
     // we wait on the callback now to measure the APA102 update time
     // decomment if you want to continue (DMA happens in background)
-    //while(!hw_spi_DMA_TransferCompleted);
+    while(!hw_spi_DMA_TransferCompleted);
 
   } else {                               // Soft (bitbang) SPI
 
@@ -269,12 +269,9 @@ inline void Adafruit_DotStar::clear() { // Write 0s (off) to full pixel buffer
   //we only need to write 0s to the pixels not to start/end frame...
 
   // fix bug, still steps of 4...
-  /*for(uint16_t i = 4;i<numLEDs;i=i+4) {
-    pixels[i]   = 0xFF;
-    pixels[i+1] = 0;
-    pixels[i+2] = 0;
-    pixels[i+3] = 0;
-  }*/
+  for(uint16_t i = 0;i<numLEDs;i++) {
+    setPixelColor(i,0,0,0);
+  }
 }
 
 // Set pixel color, separate R,G,B values (0-255 ea.)
@@ -296,7 +293,7 @@ void Adafruit_DotStar::setPixelColor(
 // Set pixel color, 'packed' RGB value (0x000000 - 0xFFFFFF)
 void Adafruit_DotStar::setPixelColor(uint16_t n, uint32_t c) {
   if(n < numLEDs) {
-    uint8_t *p = &pixels[n * 3];
+    uint8_t *p = &pixels[n * 4];
     p[0]         = 0xFF;
     p[rOffset+1] = (uint8_t)(c >> 16);
     p[gOffset+1] = (uint8_t)(c >>  8);
