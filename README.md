@@ -6,6 +6,9 @@ This fork was made for people that have a need for speed.
 The original library takes about 800us for 128 leds (hardware SPI), so this saves
 about 1ms. 800us is still very fast, so beginners better might use the original library. 
 
+People that start out with LEDs can better use the FastLED library which has better support,
+more functionality and other awesomeness: [FastLED] (http://fastled.io). 
+
 This fork has several changes. 
 
 SPI.transfer was modified in order to support build in DMA. This transfers 
