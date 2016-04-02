@@ -1,8 +1,8 @@
 {
   "name": "dotstar",
-  "author": "Adafruit, Technobly",
+  "author": "Adafruit, Technobly, Kamperman",
   "license": "GNU GPLv3",
   "version": "0.0.3",
-  "description": "An Implementation of Adafruit's DotStar Library for Particle devices",
+  "description": "An Implementation of Adafruit's DotStar Library for Particle devices. Modified for DMA SPI.",
   "namespace": "Adafruit_DotStar"
 }

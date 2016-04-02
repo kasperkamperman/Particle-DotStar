@@ -1,7 +1,45 @@
-Particle-DotStar
-================
+Particle-DotStar Mod
+====================
 
-(Fast Modification to test SPI DMA on the Particle Photon)
+This fork was made for people that have a need for speed. 
+
+The original library takes about 800us for 128 leds (hardware SPI), so this saves
+about 1ms. 800us is still very fast, so beginners better might use the original library. 
+
+This fork has several changes. 
+
+SPI.transfer was modified in order to support build in DMA. This transfers 
+the pixel data to the leds in the background, so you continue with upcoming 
+calculations, see [Particle Reference] (https://docs.particle.io/reference/firmware/photon/#transfer-).
+
+To do that the internal layout of the pixels array was changed. 
+
+setBrightness() now modifies the 5-bit brightness parameter of the DotStar leds. This 
+is not the most optimimal, so again a reason for beginners to skip this. It's a number
+between 0-255 that will be scaled down to 0-31 (5-bit). 
+
+The software SPI part wasn't really changed (although it bitbangs the new layout)
+
+If you'd like to use SPI use the following pins on the Photon:
+- A3 Clock
+- A5 Data
+
+alternatively you can use SPI1:
+- D4 Clock
+- D2 Data
+
+Hardware SPI calls:
+
+```cpp
+Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS); // SPI (A3/A5)
+Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_BGR, 0); // SPI (A3/A5)
+Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_BGR, 1); // SPI1 (D2/D4)
+
+```
+
+Original library text below
+===========================
+
 
 A library for manipulating DotStar RGB LEDs for the Spark Core, Particle Photon, P1 and Electron.
 Implementation based on Adafruit's DotStar Library.

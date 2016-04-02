@@ -41,8 +41,8 @@ class Adafruit_DotStar {
 
  public:
 
-    Adafruit_DotStar(uint16_t n, uint8_t o=DOTSTAR_GBR);
-    Adafruit_DotStar(uint16_t n, uint8_t d, uint8_t c, uint8_t o=DOTSTAR_GBR);
+    Adafruit_DotStar(uint16_t n, uint8_t o=DOTSTAR_BGR, uint8_t s=0);
+    Adafruit_DotStar(uint16_t n, uint8_t d, uint8_t c, uint8_t o=DOTSTAR_BGR);
    ~Adafruit_DotStar(void);                 // Destructor
   void
     begin(void),                            // Prime pins/SPI for output
@@ -82,6 +82,9 @@ class Adafruit_DotStar {
     sw_spi_init(void),                      // Start bitbang SPI
     sw_spi_out(uint8_t n),                  // Bitbang SPI write
     sw_spi_end(void);                       // Stop bitbang SPI
+
+  bool
+    use_spi_1 = false;                      // 
 
   static void hw_spi_DMA_TransferComplete_Callback(void); // DMA transfer done
 

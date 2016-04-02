@@ -50,17 +50,16 @@
 // fast pin access
 #define pinSet(_pin, _hilo) (_hilo ? pinHI(_pin) : pinLO(_pin))
 
-#define spi_out(n) (void)SPI.transfer(n)
-
 #define USE_HW_SPI 255 // Assign this to dataPin to indicate 'hard' SPI
 
 bool Adafruit_DotStar::hw_spi_DMA_TransferCompleted;
 
 // Constructor for hardware SPI -- must connect to MOSI, SCK pins
-Adafruit_DotStar::Adafruit_DotStar(uint16_t n, uint8_t o) :
+Adafruit_DotStar::Adafruit_DotStar(uint16_t n, uint8_t o, uint8_t s) :
  numLEDs(n), dataPin(USE_HW_SPI), brightness(0), pixels(NULL),
  rOffset(o & 3), gOffset((o >> 2) & 3), bOffset((o >> 4) & 3)
-{
+{ if(s==0) use_spi_1 = false;
+  else     use_spi_1 = true;
   updateLength(n);
 }
 
@@ -148,7 +147,7 @@ void Adafruit_DotStar::updateLength(uint16_t n) {
 // SPI STUFF ---------------------------------------------------------------
 
 void Adafruit_DotStar::hw_spi_init(void) { // Initialize hardware SPI
-  SPI.begin();
+
   // 72MHz / 4 = 18MHz (sweet spot)
   // Any slower than 18MHz and you are barely faster than Software SPI.
   // Any faster than 18MHz and the code overhead dominates.
@@ -157,14 +156,24 @@ void Adafruit_DotStar::hw_spi_init(void) { // Initialize hardware SPI
   // none the less 18Mhz is pretty fast.
   // we fix this instead of depending on the divider.
 
-  //SPI.setClockDivider(SPI_CLOCK_DIV4);
-  SPI.setClockSpeed(18000000);
-  SPI.setBitOrder(MSBFIRST);
-  SPI.setDataMode(SPI_MODE0);
+  if(use_spi_1) {
+    // D2/D4
+    SPI1.begin();
+    SPI1.setClockSpeed(18000000);
+    SPI1.setBitOrder(MSBFIRST);
+    SPI1.setDataMode(SPI_MODE0);
+  } else {
+    // A3/A5
+    SPI.begin();
+    SPI.setClockSpeed(18000000);
+    SPI.setBitOrder(MSBFIRST);
+    SPI.setDataMode(SPI_MODE0);
+  };
 }
 
 inline void Adafruit_DotStar::hw_spi_end(void) { // Stop hardware SPI
-  SPI.end();
+  if(use_spi_1) SPI1.end();
+  else          SPI.end();
 }
 
 void Adafruit_DotStar::sw_spi_init(void) { // Init 'soft' (bitbang) SPI
@@ -190,15 +199,19 @@ void Adafruit_DotStar::sw_spi_out(uint8_t n) { // Bitbang SPI write
 
 /* ISSUE DATA TO LED STRIP -------------------------------------------------
 
-  Although the LED driver has an additional per-pixel 5-bit brightness
-  setting, it is NOT used or supported here because it's a brain-dead
-  misfeature that's counter to the whole point of Dot Stars, which is to
-  have a much faster PWM rate than NeoPixels.  It gates the high-speed
-  PWM output through a second, much slower PWM (about 400 Hz), rendering
-  it useless for POV.  This brings NOTHING to the table that can't be
-  already handled better in one's sketch code.  If you really can't live
-  without this abomination, you can fork the library and add it for your
-  own use, but any pull requests for this will NOT be merged, nuh uh!
+  I implemented the per-pixel 5-bit brightness and replaced the scale
+  brightness. If you want to scale brightness properly, implement it in your
+  sketch.
+
+  Take the comment below in account.
+
+    Although the LED driver has an additional per-pixel 5-bit brightness
+    setting, it is NOT used or supported here because it's a brain-dead
+    misfeature that's counter to the whole point of Dot Stars, which is to
+    have a much faster PWM rate than NeoPixels.  It gates the high-speed
+    PWM output through a second, much slower PWM (about 400 Hz), rendering
+    it useless for POV.  This brings NOTHING to the table that can't be
+    already handled better in one's sketch code.
 */
 
 void Adafruit_DotStar::hw_spi_DMA_TransferComplete_Callback(void) {
@@ -208,10 +221,6 @@ void Adafruit_DotStar::hw_spi_DMA_TransferComplete_Callback(void) {
 void Adafruit_DotStar::show(void) {
 
   if(!pixels) return;
-
-  uint8_t *ptr = pixels, i;            // -> LED data
-  uint16_t n   = numLEDs;              // Counter
-  uint16_t b16 = (uint16_t)brightness; // Type-convert for fixed-point math
 
   //__disable_irq(); // If 100% focus on SPI clocking required
 
@@ -228,7 +237,10 @@ void Adafruit_DotStar::show(void) {
     // https://community.particle.io/t/bug-in-spi-block-transfer-complete-callback/18568
 
     hw_spi_DMA_TransferCompleted = false;
-    SPI.transfer((void *)pixels, 0, pixelArrayLength, hw_spi_DMA_TransferComplete_Callback);
+
+    if(!use_spi_1) SPI.transfer((void *)pixels, 0, pixelArrayLength, hw_spi_DMA_TransferComplete_Callback);
+    else           SPI1.transfer((void *)pixels, 0, pixelArrayLength, hw_spi_DMA_TransferComplete_Callback);
+
     //SPI.transfer((void *)pixels, 0, pixelArrayLength, NULL);
 
     // we wait on the callback now to measure the APA102 update time
@@ -237,38 +249,19 @@ void Adafruit_DotStar::show(void) {
 
   } else {                               // Soft (bitbang) SPI
 
-    // to implement
-    // this doesn't fit the new pixel array layout
-
-    /*
-    for(i=0; i<4; i++) sw_spi_out(0);    // Start-frame marker
-
-    if(brightness) {                     // Scale pixel brightness on output
-      do {                               // For each pixel...
-        sw_spi_out(0xFF);                //  Pixel start
-        for(i=0; i<3; i++) sw_spi_out((*ptr++ * b16) >> 8); // Scale, write
-      } while(--n);
-    } else {                             // Full brightness (no scaling)
-      do {                               // For each pixel...
-        sw_spi_out(0xFF);                //  Pixel start
-        for(i=0; i<3; i++) sw_spi_out(*ptr++); // R,G,B
-      } while(--n);
-    }
-    for(i=0; i<4; i++) sw_spi_out(0xFF); // End-frame marker (see note above)
-    */
+    // because of the new pixel layout we can output the array
+    // in one time. Brightness scaling is removed.
+    for(int i=0; i<pixelArrayLength; i++) {
+      sw_spi_out(pixels[i]);
+    };
   }
 
   //__enable_irq();
 }
 
+inline void Adafruit_DotStar::clear() {
+  // was memset before now we just make the pixels black.
 
-
-
-inline void Adafruit_DotStar::clear() { // Write 0s (off) to full pixel buffer
-  //memset(pixels, 4, numLEDs * 4);
-  //we only need to write 0s to the pixels not to start/end frame...
-
-  // fix bug, still steps of 4...
   for(uint16_t i = 0;i<numLEDs;i++) {
     setPixelColor(i,0,0,0);
   }
@@ -283,7 +276,7 @@ void Adafruit_DotStar::setPixelColor(
 
     //we apply 5-bit brightness later...
     //0xE0 + (brightness>>3);
-    p[0]         = 0xFF;
+    p[0]         = 0xE0 + (brightness>>3);
     p[rOffset+1] = r;
     p[gOffset+1] = g;
     p[bOffset+1] = b;
@@ -298,8 +291,6 @@ void Adafruit_DotStar::setPixelColor(uint16_t n, uint32_t c) {
     p[rOffset+1] = (uint8_t)(c >> 16);
     p[gOffset+1] = (uint8_t)(c >>  8);
     p[bOffset+1] = (uint8_t)c;
-
-
   }
 }
 
@@ -310,45 +301,39 @@ uint32_t Adafruit_DotStar::Color(uint8_t r, uint8_t g, uint8_t b) {
 
 // Read color from previously-set pixel, returns packed RGB value.
 uint32_t Adafruit_DotStar::getPixelColor(uint16_t n) const {
-  //if(n >= numLEDs)
-    return 0;
+  if(n >= numLEDs) return 0;
 
-  // not implemented in new pixel layout
-  /*
-  uint8_t *p = &pixels[n * 3];
+  // 4 start bytes, the 1st parameter is the pixel brightness
+  // we don't give that back.
+  uint8_t *p = &pixels[4 + (n * 4) + 1];
 
   return ((uint32_t)p[rOffset] << 16) |
          ((uint32_t)p[gOffset] <<  8) |
           (uint32_t)p[bOffset];
-  */
 }
 
 uint16_t Adafruit_DotStar::numPixels(void) { // Ret. strip length
   return numLEDs;
 }
 
-// Set global strip brightness.  This does not have an immediate effect;
+// Set global strip brightness. This does not have an immediate effect;
+// we use the pixel brightness parameter of the APA102/DotStar strips for this.
+// use the orignal library if you don't want that.
+
 // must be followed by a call to show().  Not a fan of this...for various
 // reasons I think it's better handled in one's sketch, but it's here for
 // parity with the NeoPixel library.  Good news is that brightness setting
 // in this library is 'non destructive' -- it's applied as color data is
 // being issued to the strip, not during setPixel(), and also means that
 // getPixelColor() returns the exact value originally stored.
-inline void Adafruit_DotStar::setBrightness(uint8_t b) {
-  // Stored brightness value is different than what's passed.  This
-  // optimizes the actual scaling math later, allowing a fast 8x8-bit
-  // multiply and taking the MSB.  'brightness' is a uint8_t, adding 1
-  // here may (intentionally) roll over...so 0 = max brightness (color
-  // values are interpreted literally; no scaling), 1 = min brightness
-  // (off), 255 = just below max brightness.
-  //brightness = b + 1;
 
+inline void Adafruit_DotStar::setBrightness(uint8_t b) {
   // now we use apa102 pixel brightness, so above doesn't apply
   brightness = b;
 }
 
 inline uint8_t Adafruit_DotStar::getBrightness(void) const {
-  return brightness; // - 1; // Reverse above operation
+  return brightness;
 }
 
 // Return pointer to the library's pixel data buffer.  Use carefully,

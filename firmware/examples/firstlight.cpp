@@ -30,7 +30,7 @@ void printTime() {
     t2 = micros()-t1;
     if(t2>t3) t3 = t2;
 
-    Serial.print(F("update ada time: "));
+    Serial.print(F("update time: "));
     Serial.print(t3);
     Serial.print(" ");
     Serial.println(t2);
