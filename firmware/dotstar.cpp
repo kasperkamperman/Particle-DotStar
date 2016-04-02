@@ -52,11 +52,12 @@
 
 #define USE_HW_SPI 255 // Assign this to dataPin to indicate 'hard' SPI
 
-bool Adafruit_DotStar::hw_spi_DMA_TransferCompleted;
+bool Adafruit_DotStar::hw_spi_DMA_TransferCompleted = true;
+uint16_t Adafruit_DotStar::spiStartTime;
 
 // Constructor for hardware SPI -- must connect to MOSI, SCK pins
 Adafruit_DotStar::Adafruit_DotStar(uint16_t n, uint8_t o, uint8_t s) :
- numLEDs(n), dataPin(USE_HW_SPI), brightness(0), pixels(NULL),
+ numLEDs(n), dataPin(USE_HW_SPI), brightness(255), pixels(NULL),
  rOffset(o & 3), gOffset((o >> 2) & 3), bOffset((o >> 4) & 3)
 { if(s==0) use_spi_1 = false;
   else     use_spi_1 = true;
@@ -66,7 +67,7 @@ Adafruit_DotStar::Adafruit_DotStar(uint16_t n, uint8_t o, uint8_t s) :
 // Constructor for 'soft' (bitbang) SPI -- any two pins can be used
 Adafruit_DotStar::Adafruit_DotStar(uint16_t n, uint8_t data, uint8_t clock,
   uint8_t o) :
- dataPin(data), clockPin(clock), brightness(0), pixels(NULL),
+ dataPin(data), clockPin(clock), brightness(255), pixels(NULL),
  rOffset(o & 3), gOffset((o >> 2) & 3), bOffset((o >> 4) & 3)
 {
   updateLength(n);
@@ -216,6 +217,10 @@ void Adafruit_DotStar::sw_spi_out(uint8_t n) { // Bitbang SPI write
 
 void Adafruit_DotStar::hw_spi_DMA_TransferComplete_Callback(void) {
     hw_spi_DMA_TransferCompleted = true;
+
+    //uint16_t duration = micros() - spiStartTime;
+    //Serial.print("duration: ");
+    //Serial.println(duration);
 }
 
 void Adafruit_DotStar::show(void) {
@@ -236,16 +241,20 @@ void Adafruit_DotStar::show(void) {
     // transferComplete_Callback method from this topic:
     // https://community.particle.io/t/bug-in-spi-block-transfer-complete-callback/18568
 
-    hw_spi_DMA_TransferCompleted = false;
+    if(hw_spi_DMA_TransferCompleted)
+    {
+      hw_spi_DMA_TransferCompleted = false;
+      //spiStartTime = micros();
 
-    if(!use_spi_1) SPI.transfer((void *)pixels, 0, pixelArrayLength, hw_spi_DMA_TransferComplete_Callback);
-    else           SPI1.transfer((void *)pixels, 0, pixelArrayLength, hw_spi_DMA_TransferComplete_Callback);
-
+      if(!use_spi_1) SPI.transfer((void *)pixels, 0, pixelArrayLength, hw_spi_DMA_TransferComplete_Callback);
+      else           SPI1.transfer((void *)pixels, 0, pixelArrayLength, hw_spi_DMA_TransferComplete_Callback);
+    }
+    else {
+      //uint16_t duration = micros() - spiStartTime;
+      //Serial.print("still sending! : ");
+      //Serial.println(duration);
+    }
     //SPI.transfer((void *)pixels, 0, pixelArrayLength, NULL);
-
-    // we wait on the callback now to measure the APA102 update time
-    // decomment if you want to continue (DMA happens in background)
-    while(!hw_spi_DMA_TransferCompleted);
 
   } else {                               // Soft (bitbang) SPI
 
@@ -327,18 +336,18 @@ uint16_t Adafruit_DotStar::numPixels(void) { // Ret. strip length
 // being issued to the strip, not during setPixel(), and also means that
 // getPixelColor() returns the exact value originally stored.
 
-inline void Adafruit_DotStar::setBrightness(uint8_t b) {
+void Adafruit_DotStar::setBrightness(uint8_t b) {
   // now we use apa102 pixel brightness, so above doesn't apply
   brightness = b;
 }
 
-inline uint8_t Adafruit_DotStar::getBrightness(void) const {
+uint8_t Adafruit_DotStar::getBrightness(void) const {
   return brightness;
 }
 
 // Return pointer to the library's pixel data buffer.  Use carefully,
 // much opportunity for mayhem.  It's mostly for code that needs fast
 // transfers, e.g. SD card to LEDs.  Color data is in BGR order.
-inline uint8_t *Adafruit_DotStar::getPixels(void) const {
+uint8_t *Adafruit_DotStar::getPixels(void) const {
   return pixels;
 }

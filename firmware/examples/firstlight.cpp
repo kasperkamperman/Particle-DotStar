@@ -5,11 +5,6 @@
 
 Adafruit_DotStar strip = Adafruit_DotStar(NUM_LEDS, DOTSTAR_BGR);
 
-// debug duration
-unsigned long t1; // for measuring purposes
-unsigned long t2; // for measuring purposes
-unsigned long t3 = 0; // for measuring purposes
-
 int counter = 0;
 
 void setup() {
@@ -18,22 +13,9 @@ void setup() {
   Serial.begin(57600);
 
   strip.begin(); // Initialize pins for output
+  //strip.setBrightness(255);
   strip.show();  // Turn all LEDs off ASAP
 
-}
-
-void setTime() {
-   t1 = micros();
-}
-
-void printTime() {
-    t2 = micros()-t1;
-    if(t2>t3) t3 = t2;
-
-    Serial.print(F("update time: "));
-    Serial.print(t3);
-    Serial.print(" ");
-    Serial.println(t2);
 }
 
 void loop() {
@@ -48,9 +30,7 @@ void loop() {
 
   counter++;
 
-  setTime();
-    strip.show();
-  printTime();
+  strip.show();
 
-  delay(200);
+  delay(10);
 }
